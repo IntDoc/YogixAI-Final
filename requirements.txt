@@ -1,0 +1,13 @@
+Django==4.2.16
+channels==4.1.0
+daphne==4.1.2
+dj-database-url==2.2.0
+psycopg2-binary==2.9.9
+whitenoise==6.7.0
+mediapipe==0.10.14
+opencv-python-headless==4.10.0.84
+numpy==1.26.4
+anthropic==0.34.2
+Pillow==10.4.0
+gunicorn==22.0.0
+uvicorn[standard]==0.30.6

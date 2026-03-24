@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Yogix AI — Live Demo</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI',system-ui,sans-serif;background:#0f0f1a;color:#e0e0ff;min-height:100vh}
+header{background:linear-gradient(135deg,#1a1a3e,#2d1b69);padding:14px 24px;display:flex;align-items:center;gap:12px;border-bottom:1px solid #3d3d6b}
+header h1{font-size:1.3rem;font-weight:700;color:#a78bfa}
+.badge{background:#7c3aed22;border:1px solid #7c3aed;color:#a78bfa;font-size:.75rem;padding:2px 10px;border-radius:99px}
+.dot{width:8px;height:8px;border-radius:50%;background:#555;display:inline-block;margin-right:6px;transition:background .3s}
+.dot.on{background:#22c55e;box-shadow:0 0 6px #22c55e88}
+.dot.err{background:#ef4444}
+#status-text{font-size:.8rem;color:#888;margin-left:auto}
+
+.layout{display:grid;grid-template-columns:1fr 340px;gap:14px;padding:14px;max-width:1400px;margin:0 auto}
+.video-wrap{position:relative;background:#111;border-radius:12px;overflow:hidden;border:1px solid #2a2a4a}
+video{width:100%;display:block;transform:scaleX(-1)}
+canvas#sk{position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none}
+.vctrls{padding:10px;display:flex;gap:8px;background:#0d0d1a;border-top:1px solid #2a2a4a;flex-wrap:wrap}
+button{padding:8px 16px;border-radius:8px;border:none;font-size:.85rem;font-weight:600;cursor:pointer;transition:opacity .2s}
+button:hover{opacity:.85}
+button:disabled{opacity:.35;cursor:default}
+.p{background:#7c3aed;color:#fff}.d{background:#dc2626;color:#fff}.g{background:#2a2a4a;color:#a0a0cc}
+
+.side{display:flex;flex-direction:column;gap:10px}
+.card{background:#1a1a2e;border:1px solid #2a2a4a;border-radius:12px;padding:14px}
+.ct{font-size:.7rem;text-transform:uppercase;letter-spacing:.08em;color:#5050aa;margin-bottom:8px;font-weight:700}
+
+#pose-name{font-size:1.5rem;font-weight:700;color:#a78bfa;min-height:1.8rem}
+#pose-conf{font-size:.78rem;color:#555;margin-top:2px}
+
+.sr{margin-bottom:8px}
+.sl{font-size:.78rem;color:#777;margin-bottom:3px;display:flex;justify-content:space-between}
+.bg{background:#2a2a4a;border-radius:99px;height:7px;overflow:hidden}
+.bf{height:100%;border-radius:99px;transition:width .4s ease}
+.bpu{background:linear-gradient(90deg,#7c3aed,#a78bfa)}
+.bgr{background:linear-gradient(90deg,#059669,#34d399)}
+.bbl{background:linear-gradient(90deg,#2563eb,#60a5fa)}
+.bor{background:linear-gradient(90deg,#d97706,#fbbf24)}
+
+#coach{font-size:.9rem;color:#60a5fa;font-style:italic;min-height:2.2rem;line-height:1.5}
+
+.ci{background:#2a1a1a;border-left:3px solid #ef4444;padding:5px 9px;border-radius:4px;font-size:.8rem;color:#fca5a5;margin-bottom:5px}
+.pi{background:#1a2a1a;border-left:3px solid #22c55e;padding:5px 9px;border-radius:4px;font-size:.8rem;color:#86efac;margin-bottom:5px}
+
+.sg{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.sb{background:#111128;border-radius:8px;padding:9px;text-align:center}
+.sv{font-size:1.3rem;font-weight:700;color:#a78bfa}
+.sl2{font-size:.7rem;color:#555;margin-top:2px}
+
+#np-name{font-size:1rem;font-weight:600;color:#fbbf24}
+#np-reason{font-size:.78rem;color:#555;margin-top:3px}
+
+.log{background:#050510;border:1px solid #1a1a3a;border-radius:8px;padding:8px;font-family:monospace;font-size:.72rem;color:#3a3a7a;height:100px;overflow-y:auto}
+.log p{margin-bottom:1px}
+.li{color:#2a7a4a}.lw{color:#7a5a1a}.le{color:#7a2a2a}
+@media(max-width:860px){.layout{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<header>
+  <h1>🧘 Yogix AI</h1>
+  <span class="badge">Claude + MediaPipe</span>
+  <span id="status-text"><span class="dot" id="dot"></span>Disconnected</span>
+</header>
+
+<div class="layout">
+  <div>
+    <div class="video-wrap">
+      <video id="vid" autoplay playsinline muted></video>
+      <canvas id="sk"></canvas>
+    </div>
+    <div class="vctrls">
+      <button class="p" id="bstart">▶ Start Camera</button>
+      <button class="d" id="bstop" disabled>■ Stop</button>
+      <button class="g" id="breport" disabled>📄 Get Report</button>
+      <button class="g" id="bnext" disabled>→ Next Pose</button>
+      <button class="g" id="breset" disabled>↺ Reset Session</button>
+    </div>
+  </div>
+
+  <div class="side">
+    <div class="card">
+      <div class="ct">Current Pose</div>
+      <div id="pose-name">—</div>
+      <div id="pose-conf">Start camera to begin…</div>
+    </div>
+
+    <div class="card">
+      <div class="ct">Scores</div>
+      <div class="sr">
+        <div class="sl"><span>Pose Accuracy</span><span id="sv">—</span></div>
+        <div class="bg"><div class="bf bpu" id="sb" style="width:0%"></div></div>
+      </div>
+      <div class="sr">
+        <div class="sl"><span>Shoulders</span><span id="shv">—</span></div>
+        <div class="bg"><div class="bf bgr" id="shb" style="width:0%"></div></div>
+      </div>
+      <div class="sr">
+        <div class="sl"><span>Core</span><span id="cov">—</span></div>
+        <div class="bg"><div class="bf bbl" id="cob" style="width:0%"></div></div>
+      </div>
+      <div class="sr">
+        <div class="sl"><span>Legs</span><span id="lev">—</span></div>
+        <div class="bg"><div class="bf bor" id="leb" style="width:0%"></div></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="ct">Claude Coaching</div>
+      <div id="coach">Start your session…</div>
+    </div>
+
+    <div class="card">
+      <div class="ct">Feedback</div>
+      <div id="corr-list"></div>
+      <div id="pos-list"></div>
+    </div>
+
+    <div class="card">
+      <div class="ct">Session Stats</div>
+      <div class="sg">
+        <div class="sb"><div class="sv" id="s-reps">0</div><div class="sl2">Repetitions</div></div>
+        <div class="sb"><div class="sv" id="s-hold">0s</div><div class="sl2">Hold Time</div></div>
+        <div class="sb"><div class="sv" id="s-frames">0</div><div class="sl2">Frames</div></div>
+        <div class="sb"><div class="sv" id="s-score">—</div><div class="sl2">Avg Score</div></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="ct">Next Pose</div>
+      <div id="np-name">—</div>
+      <div id="np-reason"></div>
+    </div>
+
+    <div class="card">
+      <div class="ct">Log</div>
+      <div class="log" id="log"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+const vid=document.getElementById('vid'),sk=document.getElementById('sk'),ctx=sk.getContext('2d');
+const WS=(location.protocol==='https:'?'wss':'ws')+'://'+location.host+'/ws/yoga/';
+let ws=null,stream=null,sendTimer=null;
+
+function bar(bid,vid2,val,max,sfx=''){
+  const p=Math.min(100,(val/max)*100);
+  document.getElementById(bid).style.width=p+'%';
+  document.getElementById(vid2).textContent=val+sfx;
+}
+function setStatus(on,err){
+  const d=document.getElementById('dot'),t=document.getElementById('status-text');
+  d.className='dot'+(on?' on':err?' err':'');
+  t.innerHTML='<span class="dot'+(on?' on':err?' err':'')+'"></span>'+(on?'Connected':err?'Error':'Disconnected');
+}
+function log(msg,cls=''){
+  const b=document.getElementById('log'),p=document.createElement('p');
+  if(cls)p.className=cls;
+  p.textContent='['+new Date().toLocaleTimeString()+'] '+msg;
+  b.appendChild(p);b.scrollTop=b.scrollHeight;
+}
+
+// Skeleton connections (MediaPipe Pose indices)
+const CONN=[[11,12],[11,13],[13,15],[12,14],[14,16],[11,23],[12,24],[23,24],[23,25],[24,26],[25,27],[26,28],[27,29],[28,30],[29,31],[30,32]];
+
+function drawSkeleton(lms){
+  const W=sk.width=sk.offsetWidth,H=sk.height=sk.offsetHeight;
+  ctx.clearRect(0,0,W,H);
+  ctx.strokeStyle='rgba(167,139,250,0.7)';ctx.lineWidth=2;
+  CONN.forEach(([a,b])=>{
+    if(a>=lms.length||b>=lms.length)return;
+    const la=lms[a],lb=lms[b];
+    if(la.visibility<0.4||lb.visibility<0.4)return;
+    ctx.beginPath();
+    ctx.moveTo((1-la.x)*W,la.y*H);
+    ctx.lineTo((1-lb.x)*W,lb.y*H);
+    ctx.stroke();
+  });
+  lms.forEach(lm=>{
+    if(lm.visibility<0.4)return;
+    ctx.beginPath();
+    ctx.arc((1-lm.x)*W,lm.y*H,4,0,2*Math.PI);
+    ctx.fillStyle='#7c3aed';ctx.fill();
+  });
+}
+
+function connectWS(){
+  ws=new WebSocket(WS);
+  ws.onopen=()=>{setStatus(true);log('WebSocket connected','li')};
+  ws.onclose=()=>{setStatus(false,false);log('WebSocket closed','lw')};
+  ws.onerror=()=>{setStatus(false,true);log('WebSocket error','le')};
+  ws.onmessage=e=>{
+    const d=JSON.parse(e.data);
+    if(d.type==='frame_result'){
+      document.getElementById('s-frames').textContent=d.frame;
+      if(!d.detected){document.getElementById('pose-conf').textContent='No person detected';return}
+      if(!d.full_body){document.getElementById('pose-conf').textContent='Full body not visible — step back';return}
+      if(d.avg_similarity_score!=null){bar('sb','sv',d.avg_similarity_score,10,'/10');document.getElementById('s-score').textContent=d.avg_similarity_score}
+      if(d.engagement){bar('shb','shv',d.engagement.shoulder,100,'%');bar('cob','cov',d.engagement.core,100,'%');bar('leb','lev',d.engagement.legs,100,'%')}
+      if(d.hold_seconds!=null)document.getElementById('s-hold').textContent=Math.round(d.hold_seconds)+'s';
+      if(d.repetitions!=null)document.getElementById('s-reps').textContent=d.repetitions;
+      if(d.current_pose)document.getElementById('pose-name').textContent=d.current_pose;
+      if(d.landmarks)drawSkeleton(d.landmarks);
+    }
+    else if(d.type==='claude_result'){
+      document.getElementById('pose-name').textContent=d.pose_name||'—';
+      document.getElementById('pose-conf').textContent='Confidence: '+Math.round((d.confidence||0)*100)+'% · '+(d.category||'');
+      if(d.coaching_message)document.getElementById('coach').textContent=d.coaching_message;
+      const cl=document.getElementById('corr-list');cl.innerHTML='';
+      (d.corrections||[]).forEach(c=>{const x=document.createElement('div');x.className='ci';x.textContent='⚠ '+c;cl.appendChild(x)});
+      const pl=document.getElementById('pos-list');pl.innerHTML='';
+      if(d.positive_feedback){const x=document.createElement('div');x.className='pi';x.textContent='✓ '+d.positive_feedback;pl.appendChild(x)}
+      log('Pose: '+d.pose_name+' ('+Math.round((d.confidence||0)*100)+'%)','li');
+    }
+    else if(d.type==='next_pose'){
+      document.getElementById('np-name').textContent=d.next_pose||'—';
+      document.getElementById('np-reason').textContent=d.reason||'';
+      log('Next: '+d.next_pose,'li');
+    }
+    else if(d.type==='report'){
+      const blob=new Blob([d.report_markdown||JSON.stringify(d,null,2)],{type:'text/plain'});
+      window.open(URL.createObjectURL(blob),'_blank');
+      log('Report opened in new tab','li');
+    }
+    else if(d.type==='reset'){log('Session reset','lw')}
+    else if(d.type==='error'||d.type==='claude_error'){log('Error: '+d.message,'le')}
+  };
+}
+
+document.getElementById('bstart').addEventListener('click',async()=>{
+  try{
+    stream=await navigator.mediaDevices.getUserMedia({video:{width:640,height:360}});
+    vid.srcObject=stream;await vid.play();
+    connectWS();
+    await new Promise(r=>setTimeout(r,700));
+    const tc=document.createElement('canvas');tc.width=640;tc.height=360;
+    const tx=tc.getContext('2d');
+    sendTimer=setInterval(()=>{
+      if(!ws||ws.readyState!==1)return;
+      tx.save();tx.scale(-1,1);tx.drawImage(vid,-640,0,640,360);tx.restore();
+      tc.toBlob(b=>{if(b&&ws&&ws.readyState===1)ws.send(b)},'image/jpeg',0.7);
+    },100); // 10fps to server
+    ['bstart'].forEach(id=>document.getElementById(id).disabled=true);
+    ['bstop','breport','bnext','breset'].forEach(id=>document.getElementById(id).disabled=false);
+    log('Camera started','li');
+  }catch(e){log('Camera error: '+e.message,'le')}
+});
+
+document.getElementById('bstop').addEventListener('click',()=>{
+  clearInterval(sendTimer);
+  if(ws)ws.close();
+  if(stream)stream.getTracks().forEach(t=>t.stop());
+  stream=null;setStatus(false);
+  ['bstart'].forEach(id=>document.getElementById(id).disabled=false);
+  ['bstop','breport','bnext','breset'].forEach(id=>document.getElementById(id).disabled=true);
+  log('Session stopped','lw');
+});
+
+document.getElementById('breport').addEventListener('click',()=>{
+  if(ws&&ws.readyState===1)ws.send(JSON.stringify({action:'get_report'}));
+});
+document.getElementById('bnext').addEventListener('click',()=>{
+  if(ws&&ws.readyState===1)ws.send(JSON.stringify({action:'get_next_pose'}));
+});
+document.getElementById('breset').addEventListener('click',()=>{
+  if(ws&&ws.readyState===1)ws.send(JSON.stringify({action:'reset'}));
+});
+</script>
+</body>
+</html>
