@@ -1,17 +1,17 @@
 [phases.setup]
-nixPkgs = ["python311", "libGL", "glib", "gcc", "zlib"]
+nixPkgs = ["libGL", "glib", "gcc", "zlib"]
 
 [phases.install]
 cmds = [
-    "python3 -m pip install --upgrade pip setuptools wheel",
-    "python3 -m pip install -r requirements.txt",
+    "pip install --upgrade pip setuptools wheel",
+    "pip install -r requirements.txt",
 ]
 
 [phases.build]
 cmds = [
-    "python3 manage.py collectstatic --noinput",
-    "python3 manage.py migrate --noinput",
+    "python manage.py collectstatic --noinput",
+    "python manage.py migrate --noinput",
 ]
 
 [start]
-cmd = "python3 -m daphne -b 0.0.0.0 -p $PORT yoga_api.asgi:application"
+cmd = "daphne -b 0.0.0.0 -p $PORT yoga_api.asgi:application"
